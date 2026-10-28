@@ -1,3 +1,6 @@
+import os
+from werkzeug.utils import secure_filename
+from werkzeug.datastructures import FileStorage
 from flask import Flask, redirect, render_template, url_for
 from app.forms import ProductoForm
 from app.models import db, Producto
@@ -8,6 +11,10 @@ app.config["SECRET_KEY"] = "una_contraseña_segura_al_azar"
 # Configuración de la base de datos (En local = SQLite)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///tienda.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Configurar la carpeta destino para las imágenes
+app.config["UPLOAD_FOLDER"] = os.path.join("app", "static", "img", "uploads")
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024  # Límite de 2MB por seguridad
 
 # Vinculamos SQLAlchemy con nuestra aplicación de Flask
 db.init_app(app)
@@ -38,10 +45,23 @@ def crear_producto():
     form = ProductoForm()
     if form.validate_on_submit():
         # Llega con POST
+
+        # Procesar el upload de la imagen
+        if form.imagen.data:  # Chequea si se ha subido una imagen.
+            archivo = form.imagen.data
+            nombre_imagen = secure_filename(archivo.filename)
+
+            # Asegurar que la ruta existe
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+            # Guardar el fichero
+            archivo.save(os.path.join(app.config["UPLOAD_FOLDER"], nombre_imagen))
+
         nuevo_producto = Producto(
             nombre=form.nombre.data,
             precio=form.precio.data,
             disponible=form.disponible.data,
+            imagen=nombre_imagen if form.imagen.data else None,
         )
         db.session.add(nuevo_producto)
         db.session.commit()
@@ -59,9 +79,28 @@ def editar_producto(prod_id):
     form = ProductoForm(obj=producto)
 
     if form.validate_on_submit():
+        # Procesar el upload de la imagen
+        if (
+            isinstance(form.imagen.data, FileStorage) and form.imagen.data.filename
+        ):  # Chequea si se ha subido una imagen.
+            print("Entra aquí")
+            print(form.imagen.data)
+            archivo = form.imagen.data
+            print(archivo.filename)
+            nombre_imagen = secure_filename(archivo.filename)
+
+            # Asegurar que la ruta existe
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+            # Guardar el fichero
+            archivo.save(os.path.join(app.config["UPLOAD_FOLDER"], nombre_imagen))
+
+            producto.imagen = nombre_imagen
+
         producto.nombre = form.nombre.data
         producto.precio = form.precio.data
         producto.disponible = form.disponible.data
+        # producto.imagen = nombre_imagen if form.imagen.data else form.imagen.data
 
         db.session.commit()
         return redirect(url_for("mostrar_catalogo"))

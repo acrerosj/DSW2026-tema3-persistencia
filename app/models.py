@@ -8,7 +8,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 
 # Indicamos el nombre de la función de vista a la que redirigir si un anónimo intenta entrar a una ruta protegida
-login_manager.login_view = "login"
+login_manager.login_view = "auth.login"
 login_manager.login_message = "Por favor, inicia sesión para acceder a esta sección."
 login_manager.login_message_category = "info"
 
